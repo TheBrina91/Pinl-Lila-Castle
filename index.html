@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MineEscape 2D – Die 5 Biome</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top HUD Bar -->
+    <header class="hud-top">
+      <div class="brand">
+        <span class="brand-icon">⛏️</span>
+        <div>
+          <h1>MineEscape 2D</h1>
+          <p id="roomSubtitle" class="room-subtitle">Raum 1 von 5: Der überwucherte Eichenwald</p>
+        </div>
+      </div>
+
+      <!-- 5 Rooms Progress Tracker -->
+      <nav class="room-steps" aria-label="Raum-Fortschritt">
+        <div class="room-step active" data-room="1" style="cursor:pointer;" title="Klicken, um direkt zu Raum 1 (Eichenwald) zu wechseln">
+          <span class="step-num">1</span>
+          <span class="step-label">🌲 Wald</span>
+        </div>
+        <div class="room-step" data-room="2" style="cursor:pointer;" title="Klicken, um direkt zu Raum 2 (Redstone-Mine) zu springen">
+          <span class="step-num">2</span>
+          <span class="step-label">⛏️ Mine</span>
+        </div>
+        <div class="room-step" data-room="3" style="cursor:pointer;" title="Klicken, um direkt zu Raum 3 (Nether-Festung) zu springen">
+          <span class="step-num">3</span>
+          <span class="step-label">🔥 Nether</span>
+        </div>
+        <div class="room-step" data-room="4" style="cursor:pointer;" title="Klicken, um direkt zu Raum 4 (Amethyst-Observatorium) zu springen">
+          <span class="step-num">4</span>
+          <span class="step-label">🔮 End</span>
+        </div>
+        <div class="room-step" data-room="5" style="cursor:pointer;" title="Klicken, um direkt zu Raum 5 (Antike Schatzkammer) zu springen">
+          <span class="step-num">5</span>
+          <span class="step-label">👑 Finale</span>
+        </div>
+      </nav>
+
+      <div class="hud-actions">
+        <button id="btnSelectHero" class="mc-btn" type="button" title="Spielfigur wählen">👤 Charakter</button>
+        <button id="btnTutorial" class="mc-btn mc-btn-primary" type="button">🎓 Tutorial &amp; Lexikon</button>
+        <button id="btnHint" class="mc-btn" type="button">📖 Tipp-Buch</button>
+        <button id="btnRestart" class="mc-btn" type="button" title="Aktuellen Raum zurücksetzen">🔄 Reset</button>
+        <button id="btnSound" class="mc-btn" type="button" aria-pressed="true" title="Sound an/aus">🔊 Ton</button>
+      </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="game-stage">
+      <!-- Objective & Status Banner -->
+      <div class="status-bar">
+        <div id="objectiveText" class="objective-text">
+          🎯 <strong>Aufgabe:</strong> Beide Stein-Druckplatten vor dem Nord-Tor müssen gleichzeitig beschwert sein, damit sich das Tor öffnet!
+        </div>
+        <div id="plateStatus" class="plate-status">
+          Druckplatten: <span id="plateCounter">0 / 2</span> aktiviert
+        </div>
+      </div>
+
+      <!-- 2D Pixel Canvas Container -->
+      <div class="canvas-wrapper">
+        <canvas id="gameCanvas" width="768" height="576" aria-label="2D Minecraft Escape Room Spielfeld"></canvas>
+        
+        <!-- Floating Toast / Interaction Prompt -->
+        <div id="interactionPrompt" class="interaction-prompt">
+          Laufe mit <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> oder <kbd>Pfeiltasten</kbd> · Interagieren mit <kbd>E</kbd> / <kbd>Leertaste</kbd> oder <kbd>Klick</kbd>
+        </div>
+      </div>
+
+      <!-- Bottom HUD: Minecraft Hotbar + Controls Help -->
+      <div class="hud-bottom">
+        <div class="selected-item-banner">
+          Ausgewählt: <strong id="selectedItemName">Leere Hand</strong>
+          <span id="selectedItemHint" class="selected-item-hint">– Untersuche Truhen, Schilder &amp; Werkbank</span>
+        </div>
+
+        <div class="bottom-row">
+          <!-- Hotbar (Slots 1-5) -->
+          <div id="hotbar" class="mc-hotbar" role="listbox" aria-label="Inventar Hotbar">
+            <!-- Dynamically populated by game.js -->
+          </div>
+
+          <!-- On-Screen Mini Controls for Mouse/Touch Convenience -->
+          <div class="mini-controls" aria-label="Steuerungshilfe">
+            <div class="dpad">
+              <button type="button" class="mc-btn dpad-btn up" data-dir="up" title="Nach oben (W)">▲</button>
+              <button type="button" class="mc-btn dpad-btn left" data-dir="left" title="Nach links (A)">◀</button>
+              <button type="button" class="mc-btn dpad-btn down" data-dir="down" title="Nach unten (S)">▼</button>
+              <button type="button" class="mc-btn dpad-btn right" data-dir="right" title="Nach rechts (D)">▶</button>
+            </div>
+            <button type="button" id="btnAction" class="mc-btn action-btn" title="Benutzen / Platzieren (E oder Leertaste)">
+              ⚡ Aktion <kbd>E</kbd>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Character Selection Modal Dialog -->
+  <dialog id="heroDialog" class="mc-dialog" closedby="any" aria-labelledby="heroDialogTitle">
+    <div class="mc-dialog-inner">
+      <header class="mc-dialog-header">
+        <h2 id="heroDialogTitle">👤 Wähle deine Spielfigur</h2>
+        <button type="button" class="mc-btn close-dialog-btn" data-close="heroDialog" aria-label="Schließen">✖</button>
+      </header>
+      <div class="mc-dialog-body">
+        <p class="dialog-intro">Wähle deinen Helden für das Abenteuer in den 5 Biomen:</p>
+        <div class="hero-selection-grid">
+          <div class="hero-card" data-hero="steve">
+            <div class="hero-preview" id="previewSteve"></div>
+            <h3>Steve</h3>
+            <p>Der klassische Minecraft-Pionier im blauen Hemd.</p>
+            <button type="button" class="mc-btn mc-btn-primary btn-choose-hero" data-hero="steve">Als Steve spielen</button>
+          </div>
+          <div class="hero-card" data-hero="alex">
+            <div class="hero-preview" id="previewAlex"></div>
+            <h3>Alex</h3>
+            <p>Die furchtlose Abenteurerin im grünen Waldläufer-Outfit.</p>
+            <button type="button" class="mc-btn mc-btn-primary btn-choose-hero" data-hero="alex">Als Alex spielen</button>
+          </div>
+          <div class="hero-card" data-hero="mage">
+            <div class="hero-preview" id="previewMage"></div>
+            <h3>Amethyst-Magier</h3>
+            <p>Der Meister der Kristalle in violetter Zauberrüstung.</p>
+            <button type="button" class="mc-btn mc-btn-primary btn-choose-hero" data-hero="mage">Als Magier spielen</button>
+          </div>
+        </div>
+      </div>
+      <footer class="mc-dialog-footer">
+        <form method="dialog">
+          <button type="submit" class="mc-btn">Bestätigen &amp; Weiter</button>
+        </form>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Tutorial / Material Lexicon Dialog -->
+  <dialog id="tutorialDialog" class="mc-dialog" closedby="any" aria-labelledby="tutorialTitle">
+    <div class="mc-dialog-inner">
+      <header class="mc-dialog-header">
+        <h2 id="tutorialTitle">🎓 Einsteiger-Tutorial: Materialien &amp; Werkzeuge</h2>
+        <button type="button" class="mc-btn close-dialog-btn" data-close="tutorialDialog" aria-label="Schließen">✖</button>
+      </header>
+      <div class="mc-dialog-body">
+        <p class="dialog-intro">Willkommen in MineEscape 2D! So baust du Materialien ab und löst Rätsel:</p>
+        
+        <div class="tutorial-grid">
+          <div class="tutorial-card">
+            <div class="tutorial-icon-box" id="tutIconCobble"></div>
+            <div class="tutorial-info">
+              <h4>🪨 Rissiger Pflasterstein (Cobblestone)</h4>
+              <p><strong>Wie abbauen:</strong> Wähle die <strong>Holzspitzhacke</strong> in der Hotbar (Taste 2) aus. Stelle dich vor den rissigen Block und halte <kbd>E</kbd> oder die <strong>linke Maustaste</strong> gedrückt (ca. 0,6 Sek.).</p>
+              <span class="tutorial-tag">Ergibt: 1× Pflasterstein-Block (Schwer)</span>
+            </div>
+          </div>
+
+          <div class="tutorial-card">
+            <div class="tutorial-icon-box" id="tutIconLog"></div>
+            <div class="tutorial-info">
+              <h4>🪵 Loser Eichenstamm (Wood Log)</h4>
+              <p><strong>Wie abbauen:</strong> Kannst du <strong>mit bloßen Händen</strong> oder jedem Werkzeug abbauen! Einfach <kbd>E</kbd> oder Klick gedrückt halten.</p>
+              <span class="tutorial-tag">Ergibt: 1× Eichenstamm (für Crafting)</span>
+            </div>
+          </div>
+
+          <div class="tutorial-card">
+            <div class="tutorial-icon-box" id="tutIconChest"></div>
+            <div class="tutorial-info">
+              <h4>📦 Holztruhe &amp; Werkbank</h4>
+              <p>Stelle dich direkt davor und drücke <kbd>E</kbd> oder klicke darauf, um sie zu öffnen. In der Werkbank werden 2 Eichenstämme zu einem schweren Block gebaut.</p>
+            </div>
+          </div>
+
+          <div class="tutorial-card">
+            <div class="tutorial-icon-box" id="tutIconPlate"></div>
+            <div class="tutorial-info">
+              <h4>⚖️ Stein-Druckplatten &amp; Tor</h4>
+              <p>Steinplatten brauchen <strong>schwere Blöcke</strong> (Pflasterstein). Wähle den Block in der Hotbar aus und drücke <kbd>E</kbd> vor der Platte!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="mc-dialog-footer">
+        <form method="dialog">
+          <button type="submit" class="mc-btn mc-btn-primary">Alles verstanden – Los geht's!</button>
+        </form>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Crafting Table / Workbench Modal Dialog -->
+  <dialog id="workbenchDialog" class="mc-dialog" closedby="any" aria-labelledby="workbenchTitle">
+    <div class="mc-dialog-inner">
+      <header class="mc-dialog-header">
+        <h2 id="workbenchTitle">🛠️ Werkbank (Crafting)</h2>
+        <button type="button" class="mc-btn close-dialog-btn" data-close="workbenchDialog" aria-label="Schließen">✖</button>
+      </header>
+      <div class="mc-dialog-body">
+        <p class="dialog-intro">Kombinierte Ressourcen aus dem Raum zu schweren Blöcken für die Druckplatten:</p>
+        <div id="recipeList" class="recipe-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+      <footer class="mc-dialog-footer">
+        <form method="dialog">
+          <button type="submit" class="mc-btn">Schließen (Esc)</button>
+        </form>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Hint Book / Sign / Level Complete Modal Dialog -->
+  <dialog id="infoDialog" class="mc-dialog" closedby="any" aria-labelledby="infoDialogTitle">
+    <div class="mc-dialog-inner">
+      <header class="mc-dialog-header">
+        <h2 id="infoDialogTitle">📖 Tagebuch des Abenteurers</h2>
+        <button type="button" class="mc-btn close-dialog-btn" data-close="infoDialog" aria-label="Schließen">✖</button>
+      </header>
+      <div id="infoDialogBody" class="mc-dialog-body">
+        <!-- Populated dynamically -->
+      </div>
+      <footer class="mc-dialog-footer">
+        <form method="dialog">
+          <button type="submit" class="mc-btn mc-btn-primary">Weiter im Spiel</button>
+        </form>
+      </footer>
+    </div>
+  </dialog>
+
+  <script src="textures.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
+
